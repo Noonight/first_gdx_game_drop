@@ -1,8 +1,8 @@
 package com.mygdx.game
 
-import com.badlogic.gdx.ApplicationAdapter
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
+import com.badlogic.gdx.Screen
 import com.badlogic.gdx.audio.Music
 import com.badlogic.gdx.audio.Sound
 import com.badlogic.gdx.graphics.GL20
@@ -14,29 +14,29 @@ import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.TimeUtils
 
-@Deprecated("unused")
-class MyGdxGame : ApplicationAdapter() {
-    private lateinit var dropImage: Texture
-    private lateinit var bucketImage: Texture
-    private lateinit var dropSound: Sound
-    private lateinit var rainMusic: Music
-    private lateinit var camera: OrthographicCamera
-    private lateinit var batch: SpriteBatch
-    private lateinit var bucket: Rectangle
-    private lateinit var touchPos: Vector3
 
-    private lateinit var rainDropArray: ArrayList<Rectangle>
-    private var lastDropTime: Long = 0
+class GameScreen(val game: Drop) : Screen {
 
-    override fun create() {
-        dropImage = Texture(Gdx.files.internal("droplet.png"))
-        bucketImage = Texture(Gdx.files.internal("bucket.png"))
+    val dropImg: Texture
+    val bucketImg: Texture
+    val dropSound: Sound
+    val rainMusic: Music
+    val camera: OrthographicCamera
+    val bucket: Rectangle
+    val raindrops: ArrayList<Rectangle>
+    var lastDropTime: Long = 0
+    var dropsGathered: Int = 0
+    val touchPos: Vector3
+
+    init {
+        dropImg = Texture(Gdx.files.internal("droplet.png"))
+        bucketImg = Texture(Gdx.files.internal("bucket.png"))
 
         dropSound = Gdx.audio.newSound(Gdx.files.internal("waterdrop.wav"))
         rainMusic = Gdx.audio.newMusic(Gdx.files.internal("undertreeinrain.mp3"))
 
         rainMusic.isLooping = true
-        rainMusic.play()
+        //rainMusic.play()
 
         bucket = Rectangle()
         bucket.x = (800 / 2 - 64 / 2).toFloat() // what
@@ -45,36 +45,45 @@ class MyGdxGame : ApplicationAdapter() {
         bucket.height = 64f
 
         touchPos = Vector3()
-        rainDropArray = ArrayList()
+
+        raindrops = ArrayList()
         spawnRainDrop()
+
         camera = OrthographicCamera()
         camera.setToOrtho(false, 800f, 480f)
-
-        batch = SpriteBatch()
     }
 
-    override fun render() {
+    override fun hide() {
+    }
+
+    override fun show() {
+        rainMusic.play()
+    }
+
+    override fun render(delta: Float) {
         Gdx.gl.glClearColor(0f, 0f, 0.2f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
         camera.update()
 
-        batch.projectionMatrix = camera.combined
-        batch.begin()
-        batch.draw(bucketImage, bucket.x, bucket.y)
-        for (rainDrop in rainDropArray) {
-            batch.draw(dropImage, rainDrop.x, rainDrop.y)
+        game.batch.projectionMatrix = camera.combined
+        game.batch.begin()
+        game.batch.draw(bucketImg, bucket.x, bucket.y)
+        game.font.draw(game.batch, "Drops: " + dropsGathered, 0f, 480f)
+        for (rainDrop in raindrops) {
+            game.batch.draw(dropImg, rainDrop.x, rainDrop.y)
         }
-        batch.end()
+        game.batch.end()
 
         if (TimeUtils.nanoTime() - lastDropTime > 1000000000) spawnRainDrop()
 
-        var iterator = rainDropArray.iterator()
+        var iterator = raindrops.iterator()
         while (iterator.hasNext()) {
             var rainDrop = iterator.next()
             rainDrop.y -= 200 * Gdx.graphics.deltaTime
             if (rainDrop.y + 64 < 0) iterator.remove()
             if (rainDrop.overlaps(bucket)) {
+                dropsGathered++
                 dropSound.play()
                 iterator.remove()
             }
@@ -92,7 +101,23 @@ class MyGdxGame : ApplicationAdapter() {
 
         if (bucket.x < 0) bucket.x = 0f
         if (bucket.x > 800 - 64) bucket.x = (800 - 64).toFloat()
+    }
 
+    override fun pause() {
+    }
+
+    override fun resume() {
+    }
+
+    override fun resize(width: Int, height: Int) {
+    }
+
+    override fun dispose() {
+        dropSound.dispose()
+        bucketImg.dispose()
+        dropImg.dispose()
+        rainMusic.dispose()
+        //game.batch.dispose()
     }
 
     private fun spawnRainDrop() {
@@ -101,16 +126,7 @@ class MyGdxGame : ApplicationAdapter() {
         newRainDrop.y = 480f
         newRainDrop.width = 64f
         newRainDrop.height = 64f
-        rainDropArray.add(newRainDrop)
+        raindrops.add(newRainDrop)
         lastDropTime = TimeUtils.nanoTime()
-    }
-
-    override fun dispose() {
-        super.dispose()
-        dropSound.dispose()
-        bucketImage.dispose()
-        dropImage.dispose()
-        rainMusic.dispose()
-        batch.dispose()
     }
 }
